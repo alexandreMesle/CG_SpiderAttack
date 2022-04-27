@@ -1,4 +1,5 @@
 import java.util.*;
+import java.util.stream.Collectors;
 import java.io.*;
 import java.math.*;
 
@@ -170,27 +171,31 @@ abstract class Item
 {
 	int id;
 	Coordinates position;
-	int lastTurnUpdate = 1;
-	boolean isControlled;
+	int lastTurnUpdate = 1, shieldLife;
+	boolean isControlled, visible;
 	
-	Item(int id, int turn, Coordinates position, boolean isControlled)
+	Item(int id, int turn, Coordinates position, int shieldLife, boolean isControlled)
 	{
-		 this(id, position, isControlled);
-		 this.lastTurnUpdate = turn;	
+		 this(id, position, shieldLife, isControlled);
+		 this.lastTurnUpdate = turn;
 	 }
 	 
-	Item(int id,  Coordinates position, boolean isControlled)
+	Item(int id,  Coordinates position, int shieldLife, boolean isControlled)
 	{
 		 this.id = id;
 		 this.position = position;
 		 this.isControlled = isControlled;
+		 this.shieldLife = shieldLife;
+		 this.visible = true;
 	}
 	 
-	void update(int turn, Coordinates position, boolean isControlled)
+	void update(int turn, Coordinates position, int shieldLife, boolean isControlled)
 	{
 		this.lastTurnUpdate = turn;
 		this.position = position;
 		this.isControlled = isControlled;
+		this.shieldLife = shieldLife;
+		this.visible = true;
 	}
 }
 
@@ -198,7 +203,7 @@ class Spider extends Item
 {
 	Coordinates direction;
 	boolean nearBase;
-	int threatFor, health, shieldLife;
+	int threatFor, health;
 	public static final int THREAT_NONE = 0,
 			THREAT_FOR_ME = 1,
 			THREAT_FOR_OPPONENT = 2,
@@ -209,22 +214,20 @@ class Spider extends Item
 	
 	Spider(int id, int turn, Coordinates position, Coordinates direction, boolean nearBase, int threatFor, int health, int shieldLife, boolean isControlled)
 	{
-		super(id, turn, position, isControlled);
+		super(id, turn, position, shieldLife, isControlled);
 		this.direction = direction;
 		this.nearBase = nearBase;
 		this.threatFor = threatFor;
 		this.health = health;
-		this.shieldLife = shieldLife;
 		
 	}
 	
 	void update(int turn, Coordinates position, Coordinates direction, boolean nearBase, int threatFor, int health, int shieldLife, boolean isControlled)
 	{
-		super.update(turn, position, isControlled);
+		super.update(turn, position, shieldLife, isControlled);
 		this.nearBase = nearBase;
 		this.threatFor = threatFor;
 		this.health = health;
-		this.shieldLife = shieldLife;
 	}
 	
 	@Override
@@ -244,9 +247,9 @@ class Hero extends Item
 		SPEED = 800,
 		DAMAGE = 2;	
 	
-	Hero(int id, Coordinates position, boolean isControlled)
+	Hero(int id, Coordinates position, int shieldLife, boolean isControlled)
 	{
-		super(id, position, isControlled);
+		super(id, position, shieldLife, isControlled);
 	}
 }
 
@@ -256,11 +259,37 @@ class Game
 	Map<Integer, Spider> spiders = new HashMap<>();
 	int turn = 1;
 
+	private void setDefaultCoordinates(List<Hero> heroes)
+	{
+		Coordinates[] defaultCoordinates = 
+			{opponent.base.multiply(0.6).sum(new Coordinates(Player.WIDTH/2, me.base.row).multiply(0.4)),
+			me.base.multiply(0.55).sum(new Coordinates(opponent.base.col, (int)(Player.HEIGHT/2.5)).multiply(0.45)), 
+			me.base.multiply(0.5).sum(new Coordinates(Player.WIDTH/3, opponent.base.row).multiply(0.5)) 
+					};
+		Optional<Hero> opponentOption = opponent.heroes.values().stream()
+			.min((hero1, hero2) -> hero1.position.squaredDistance(opponent.base) - hero2.position.squaredDistance(opponent.base));
+		if (opponentOption.isPresent())
+		{
+			Hero opponentHero = opponentOption.get();
+			if (opponentHero.position.squaredDistance(opponent.base) 
+					< opponentHero.position.squaredDistance(me.base))
+				defaultCoordinates[0] = opponentOption.get().position;
+		}
+		int index = 0;
+		for (Hero hero : heroes)
+		{
+			hero.attack = index == 0; 
+			hero.waitPosition = defaultCoordinates[index++];
+		}
+	}
+	
 	private Hero farthestHero(List<Hero> heroes, Coordinates position)
 	{
 		Optional<Hero> farthest = heroes.stream()
-				.filter((hero) -> position.distance(hero.position) <= Control.RANGE)
-				.min((hero1, hero2) -> hero1.position.squaredDistance(me.base) - hero1.position.squaredDistance(me.base));
+				.filter((hero) -> position.distance(hero.position) < Control.RANGE)
+				.min((hero1, hero2) -> 
+					hero1.position.squaredDistance(me.base) - hero1.position.squaredDistance(me.base)
+					);
 		if (farthest.isPresent())
 		{
 			Hero hero = farthest.get();
@@ -270,27 +299,55 @@ class Game
 		return null;
 	}
 
+	private void playProtego(List<Hero> heroes)
+	{
+		new ArrayList<>(heroes).stream()
+			.filter((hero) -> hero.isControlled && hero.shieldLife == 0)
+			.forEach((hero) -> 
+			{
+				if (me.hasMana())
+				{
+					Optional<Hero> closest = heroes.stream()
+							.filter((other) -> other !=  hero && hero.position.distance(other.position) < Shield.RANGE)
+							.min((hero1, hero2) -> 
+								hero1.position.squaredDistance(hero.position) 
+								- hero2.position.squaredDistance(hero.position));
+					if(closest.isPresent())
+					{
+						closest.get().action = new Shield(hero.id, "Protego !");
+						heroes.remove(closest.get());
+					}
+				}
+			});
+	}
+
+	private void playImperius(List<Hero> heroes, List<Spider> spiders)
+	{
+		List<Hero> opponents = opponent.heroes.values().stream().filter((hero) -> hero.visible).collect(Collectors.toList());
+		Collections.shuffle(opponents);
+		if (spiders.stream()
+			.anyMatch((spider) -> opponent.base.distance(spider.position) < Spider.TARGET_BASE_RANGE)) 
+			while(me.hasMana() && !opponents.isEmpty() && !heroes.isEmpty())
+			{
+				Hero opponentHero = opponents.get(0);
+				if (opponentHero.shieldLife == 0 
+					&& opponent.base.distance(opponentHero.position) <= Spider.TARGET_BASE_RANGE)
+				{
+					Hero hero = farthestHero(heroes, opponentHero.position);
+					if (hero != null)
+					{
+						hero.action = new Control(opponentHero.id, new Coordinates(Player.HEIGHT/2, Player.WIDTH/2), "Imperius !");
+						me.mana -= Control.COST;
+						break;
+					}
+				}
+				opponents.remove(opponentHero);
+			}
+	}
 	
 	private void playControl(List<Hero> heroes, List<Spider> spiders)
 	{
 		List<Spider> spidersTemp = new ArrayList<>(spiders);
-		List<Hero> opponents = new ArrayList<>(opponent.heroes.values());
-		Collections.shuffle(opponents);
-		while(me.hasMana() && !opponents.isEmpty() && !heroes.isEmpty())
-		{
-			Hero opponentHero = opponents.get(0);
-			if (opponent.base.distance(opponentHero.position) <= Spider.TARGET_BASE_RANGE)
-			{
-				Hero hero = farthestHero(heroes, opponentHero.position);
-				if (hero != null)
-				{
-					hero.action = new Control(opponentHero.id, new Coordinates(Player.HEIGHT/2, Player.WIDTH/2), "Imperius !");
-					me.mana -= Control.COST;
-					break;
-				}
-			}
-			opponents.remove(opponentHero);
-		}
 		while(me.hasMana() && !spidersTemp.isEmpty() && !heroes.isEmpty())
 		{
 			Spider spider = spidersTemp.get(0);
@@ -312,9 +369,9 @@ class Game
 		}
 	}
 
-	private Hero windableHero(List<Hero> heroes, Spider spider)
+	private Hero windableHero(List<Hero> heroes, Item item)
 	{
-		Coordinates position = spider.position;
+		Coordinates position = item.position;
 		for (Hero hero : heroes)
 		{
 			if (hero.position.distance(position) <= Wind.RANGE)				 
@@ -328,21 +385,27 @@ class Game
 
 	private void playWind(List<Hero> heroes, List<Spider> spiders)
 	{
-		List<Spider> spidersTemp = new ArrayList<>(spiders);
-		while(me.hasMana() && !spidersTemp.isEmpty() && !heroes.isEmpty())
+		List<Item> items = new ArrayList<>();
+		items.addAll(spiders);
+		items.addAll(opponent.heroes.values());
+		while(me.hasMana() && !items.isEmpty() && !heroes.isEmpty())
 		{
-			Spider spider = spidersTemp.get(0);
-			if (spider.shieldLife == 0 && spider.nearBase) 
+			Item item = items.get(0);
+			if (item.shieldLife == 0 && 
+				(item.position.distance(me.base) < Spider.TARGET_BASE_RANGE + Spider.SPEED)
+				|| item.position.distance(opponent.base) < Spider.TARGET_BASE_RANGE + Spider.SPEED
+					&& spiders.stream()
+						.anyMatch((spider) -> spider.position.distance(opponent.base) < Spider.TARGET_BASE_RANGE + Spider.SPEED))
 			{	
-				Hero hero = windableHero(heroes, spider);
+				Hero hero = windableHero(heroes, item);
 				if (hero != null)
 				{
-					hero.action = new Wind(opponent.base, "Winding " + spider.id);
+					hero.action = new Wind(opponent.base, "Winding " + item.id);
 					me.mana -= Wind.COST;
-					spiders.remove(spider);
+					spiders.remove(item);
 				}
 			}
-			spidersTemp.remove(spider);
+			items.remove(item);
 		}
 	}
 
@@ -366,7 +429,7 @@ class Game
 				&& spider.position.distance(me.base) > spider.position.distance(opponent.base))
 				return null;
 			if (hero.attack
-				&& spider.position.distance(me.base) <= spider.position.distance(opponent.base))
+				&& spider.position.distance(me.base) <= 2*spider.position.distance(opponent.base))
 				return null;
 		}
 		heroes.remove(hero);
@@ -429,32 +492,31 @@ class Game
 			hero.action = new Move(hero.waitPosition, "Waiting");
 	}
 	
+	private int min(int a, int b)
+	{
+		return a < b ? a : b;
+	}
+	
 	void play()
 	{
 		me.clearActions();
-		List<Spider> spiders = new ArrayList<>(this.spiders.values());
+		List<Spider> spiders = this.spiders.values().stream().filter((spider) -> spider.visible).collect(Collectors.toList());
 		List<Hero> heroes = new ArrayList<>(me.heroes.values());
-		Coordinates[] defaultCoordinates = 
-			{opponent.base.multiply(0.6).sum(new Coordinates(Player.WIDTH/2, me.base.row).multiply(0.4)),
-			me.base.multiply(0.55).sum(new Coordinates(opponent.base.col, (int)(Player.HEIGHT/2.5)).multiply(0.45)), 
-			me.base.multiply(0.5).sum(new Coordinates(Player.WIDTH/3, opponent.base.row).multiply(0.5)) 
-					};
-		int index = 0;
-		for (Hero hero : heroes)
-		{
-			hero.attack = index == 0; 
-			hero.waitPosition = defaultCoordinates[index++];
-		}
 		Collections.sort(spiders, (spider, other) -> 
 		{
 			if (spider.nearBase != other.nearBase)
 				return (spider.nearBase ? -1 : 0) - (other.nearBase ? -1 : 0);
-			// TODO commencer par les boucliers
 			if (spider.threatFor != other.threatFor)
 				return (spider.threatFor == Spider.THREAT_FOR_ME ? -1 : 0) - (other.threatFor == Spider.THREAT_FOR_ME ? -1 : 0);
-			return me.base.squaredDistance(spider.position) - me.base.squaredDistance(other.position);
+//			if (spider.shieldLife != other.shieldLife)
+//				return other.shieldLife - spider.shieldLife;
+			return min(me.base.squaredDistance(spider.position), opponent.base.squaredDistance(spider.position)) 
+				- min(me.base.squaredDistance(other.position), opponent.base.squaredDistance(other.position));
 		}
 		);
+		setDefaultCoordinates(heroes);
+		playProtego(heroes);
+		playImperius(heroes, spiders);
 		playShield(heroes, spiders);
 		playControl(heroes, spiders);
 		playWind(heroes, spiders);
@@ -539,9 +601,9 @@ class Player
             {
             case 0 : game.spiders.put(id, new Spider(id, 1, position, new Coordinates(vx, vy), nearBase == 1, threatFor, health, shieldLife, isControlled));
             	break;
-            case 1 : game.me.heroes.put(id, new Hero(id, position, isControlled));
+            case 1 : game.me.heroes.put(id, new Hero(id, position, shieldLife, isControlled));
             	break;
-            case 2 : game.opponent.heroes.put(id, new Hero(id, position, isControlled));
+            case 2 : game.opponent.heroes.put(id, new Hero(id, position, shieldLife, isControlled));
         		break;
             }
         }
@@ -550,6 +612,8 @@ class Player
 	
 	static void inputOtherTurns(Game game)
 	{
+		game.opponent.heroes.values().stream().forEach((hero) -> {hero.visible = false;});
+		game.spiders.values().stream().forEach((spider) -> {spider.visible = false;});
         int my_health = in.nextInt(); // Your base health
         int my_mana = in.nextInt(); // Ignore in the first league; Spend ten mana to cast a spell
         game.me.update(my_health, my_mana);
@@ -578,12 +642,12 @@ class Player
             	else
             		game.spiders.put(id, new Spider(id, game.turn, position, new Coordinates(vx, vy), nearBase == 1, threatFor, health, shieldLife, isControlled));
             	break;
-            case 1 : game.me.heroes.get(id).update(game.turn, position, isControlled);
+            case 1 : game.me.heroes.get(id).update(game.turn, position, shieldLife, isControlled);
             	break;
             case 2 : if (game.opponent.heroes.containsKey(id))
-            		game.opponent.heroes.get(id).update(game.turn, position, isControlled);
+            		game.opponent.heroes.get(id).update(game.turn, position, shieldLife, isControlled);
 	            else
-	            	game.opponent.heroes.put(id, new Hero(id, position, isControlled));
+	            	game.opponent.heroes.put(id, new Hero(id, position, shieldLife, isControlled));
         		break;
             }
         }
