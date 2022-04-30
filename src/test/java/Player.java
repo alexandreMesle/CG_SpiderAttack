@@ -172,7 +172,7 @@ abstract class Item
 	int id;
 	Coordinates position;
 	int lastTurnUpdate = 1, shieldLife;
-	boolean isControlled, visible;
+	boolean isControlled, visible, hasBeenControlled = false;
 	
 	Item(int id, int turn, Coordinates position, int shieldLife, boolean isControlled)
 	{
@@ -193,6 +193,7 @@ abstract class Item
 	{
 		this.lastTurnUpdate = turn;
 		this.position = position;
+		this.hasBeenControlled = this.isControlled;
 		this.isControlled = isControlled;
 		this.shieldLife = shieldLife;
 		this.visible = true;
@@ -262,18 +263,18 @@ class Game
 	private void setDefaultCoordinates(List<Hero> heroes)
 	{
 		Coordinates[] defaultCoordinates = 
-			{opponent.base.multiply(0.6).sum(new Coordinates(Player.WIDTH/2, me.base.row).multiply(0.4)),
+			{new Coordinates(Player.WIDTH/2, Player.HEIGHT/2),
 			me.base.multiply(0.55).sum(new Coordinates(opponent.base.col, (int)(Player.HEIGHT/2.5)).multiply(0.45)), 
 			me.base.multiply(0.5).sum(new Coordinates(Player.WIDTH/3, opponent.base.row).multiply(0.5)) 
 					};
 		Optional<Hero> opponentOption = opponent.heroes.values().stream()
 			.min((hero1, hero2) -> hero1.position.squaredDistance(opponent.base) - hero2.position.squaredDistance(opponent.base));
-		if (opponentOption.isPresent())
+		if (me.mana >= 50 && opponentOption.isPresent())
 		{
 			Hero opponentHero = opponentOption.get();
 			if (opponentHero.position.squaredDistance(opponent.base) 
 					< opponentHero.position.squaredDistance(me.base))
-				defaultCoordinates[0] = opponentOption.get().position;
+				defaultCoordinates[0] = opponentOption.get().position.multiply(0.8).sum(opponent.base.multiply(0.2));
 		}
 		int index = 0;
 		for (Hero hero : heroes)
@@ -302,21 +303,13 @@ class Game
 	private void playProtego(List<Hero> heroes)
 	{
 		new ArrayList<>(heroes).stream()
-			.filter((hero) -> hero.isControlled && hero.shieldLife == 0)
+			.filter((hero) -> hero.hasBeenControlled && hero.shieldLife == 0)
 			.forEach((hero) -> 
 			{
 				if (me.hasMana())
 				{
-					Optional<Hero> closest = heroes.stream()
-							.filter((other) -> other !=  hero && hero.position.distance(other.position) < Shield.RANGE)
-							.min((hero1, hero2) -> 
-								hero1.position.squaredDistance(hero.position) 
-								- hero2.position.squaredDistance(hero.position));
-					if(closest.isPresent())
-					{
-						closest.get().action = new Shield(hero.id, "Protego !");
-						heroes.remove(closest.get());
-					}
+					hero.action = new Shield(hero.id, "Protego !");
+					heroes.remove(hero);
 				}
 			});
 	}
@@ -429,7 +422,7 @@ class Game
 				&& spider.position.distance(me.base) > spider.position.distance(opponent.base))
 				return null;
 			if (hero.attack
-				&& spider.position.distance(me.base) <= 2*spider.position.distance(opponent.base))
+				&& spider.position.distance(me.base) <= spider.position.distance(opponent.base))
 				return null;
 		}
 		heroes.remove(hero);
