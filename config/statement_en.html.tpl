@@ -45,8 +45,12 @@ text-align: left;">
     margin-right: 15px;
     margin-bottom: 10px;
     text-align: left;">
-    <em>Introductory video by <b>Mathis Hammel</b>: <a href="https://youtu.be/MyHjWftmMfQ" rel="noopener"
-        target="_blank">https://youtu.be/MyHjWftmMfQ</a></em>
+    <p><em>Introductory video by <b>Mathis Hammel</b>: <a href="https://youtu.be/MyHjWftmMfQ" rel="noopener"
+        target="_blank">https://youtu.be/MyHjWftmMfQ</a></em></p>
+    <!-- BEGIN level3 level4 -->
+    <p><em>"Road to Silver" video by <b>Mathis Hammel</b>: <a href="https://youtu.be/_y7Uua5wwsc" rel="noopener"
+        target="_blank">https://youtu.be/_y7Uua5wwsc</a></em></p>
+    <!-- END -->
   </div>
 
 
@@ -352,7 +356,7 @@ text-align: left;">
       <div class="statement-example-container">
 
         <div class="statement-example">
-          <img src="https://static.codingame.com/servlet/fileservlet?id=20669980430629" />
+          <img src="/servlet/fileservlet?id=20669980430629" />
           <div class="legend">
             <div class="description">There are
               <const>2</const> monsters within
@@ -361,7 +365,7 @@ text-align: left;">
           </div>
         </div>
         <div class="statement-example">
-          <img src="https://static.codingame.com/servlet/fileservlet?id=20669992024930" />
+          <img src="/servlet/fileservlet?id=20669992024930" />
           <div class="legend">
             <div class="title">
               <action>SPELL WIND 6000 5000</action>
@@ -374,7 +378,7 @@ text-align: left;">
           </div>
         </div>
         <div class="statement-example">
-          <img src="https://static.codingame.com/servlet/fileservlet?id=20669974783504" />
+          <img src="/servlet/fileservlet?id=20669974783504" />
           <div class="legend">
             <div class="description">The monsters all move
               <const>2200</const> in the direction defined by the vector.
@@ -489,7 +493,7 @@ text-align: left;">
             <p>Using a spell against a shielded entity still costs mana.</p>
           </li>
           <li>
-            <p>Players are not given the coordinates of monsters outside the map.</p>
+            <p>Players are not given the coordinates of monsters outside the map and they cannot be targetted by spells.</p>
           </li>
           <li>
             <p>A monster can be pushed outside of the map, unless it is within a base radius, in which case it will will
@@ -588,6 +592,8 @@ text-align: left;">
         <span class="statement-lineno">Line 1:</span> two integers
         <var>baseX</var> and
         <var>baseY</var> for the coordinates of your base. The enemy base will be at the opposite side of the map.
+        <br>
+        <span class="statement-lineno">Line 2:</span> the integer <var>heroesPerPlayer</var> which is always <const>3</const>.
         <br>
       </div>
     </div>

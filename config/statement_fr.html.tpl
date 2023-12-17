@@ -40,8 +40,12 @@ text-align: left;">
   margin-right: 15px;
   margin-bottom: 10px;
   text-align: left;">
-    <em>Vidéo d'introduction par <b>Mathis Hammel</b>: <a href="https://youtu.be/MyHjWftmMfQ" rel="noopener"
-      target="_blank">https://youtu.be/MyHjWftmMfQ</a></em>
+    <p><em>Vidéo d'introduction par <b>Mathis Hammel</b>: <a href="https://youtu.be/MyHjWftmMfQ" rel="noopener"
+      target="_blank">https://youtu.be/MyHjWftmMfQ</a></em></p>
+    <!-- BEGIN level3 level4 -->
+    <p><em>Vidéo "Road to Silver" par <b>Mathis Hammel</b>: <a href="https://youtu.be/_y7Uua5wwsc" rel="noopener"
+        target="_blank">https://youtu.be/_y7Uua5wwsc</a></em></p>
+    <!-- END -->
   </div>
 
 
@@ -331,7 +335,7 @@ text-align: left;">
       </div>
       <div class="statement-example-container">
         <div class="statement-example">
-          <img src="https://static.codingame.com/servlet/fileservlet?id=20669980430629" />
+          <img src="/servlet/fileservlet?id=20669980430629" />
           <div class="legend">
             <div class="description">Il y a
               <const>2</const> monstres dans les
@@ -340,7 +344,7 @@ text-align: left;">
           </div>
         </div>
         <div class="statement-example">
-          <img src="https://static.codingame.com/servlet/fileservlet?id=20669992024930" />
+          <img src="/servlet/fileservlet?id=20669992024930" />
           <div class="legend">
             <div class="title">
               <action>SPELL WIND 6000 5000</action>
@@ -352,7 +356,7 @@ text-align: left;">
           </div>
         </div>
         <div class="statement-example">
-          <img src="https://static.codingame.com/servlet/fileservlet?id=20669974783504" />
+          <img src="/servlet/fileservlet?id=20669974783504" />
           <div class="legend">
             <div class="description">Les monstres avancent tous de
               <const>2200</const> dans la direction définie par le vecteur.
@@ -474,7 +478,7 @@ text-align: left;">
           </li>
           <li>
             <p>
-              Les joueurs ne reçoivent pas les coordonnées des monstres situés en dehors de la carte.
+              Les joueurs ne reçoivent pas les coordonnées des monstres situés en dehors de la carte et ne peuvent pas leur lancer de sorts.
             </p>
           </li>
           <li>
@@ -574,6 +578,8 @@ text-align: left;">
         <span class="statement-lineno">Ligne 1&nbsp;:</span> deux entiers
         <var>baseX</var> et
         <var>baseY</var> pour les coordonnées de votre base. La base adverse se situe à l'opposé de la zone de jeu.
+        <br>
+        <span class="statement-lineno">Ligne 2:</span> l'entier <var>heroesPerPlayer</var> qui vaut toujours <const>3</const> pour le nombre de héros par joueur.
         <br>
       </div>
     </div>
@@ -753,7 +759,7 @@ text-align: left;">
     <div class="blk">
       <div class="title">Contraintes</div>
       <div class="text">
-        Temps de réponse par tour ≤ <const>100</const>ms<br>
+        Temps de réponse par tour ≤ <const>50</const>ms<br>
         Temps de réponse au premier tour ≤ <const>1000</const>ms
       </div>
     </div>
